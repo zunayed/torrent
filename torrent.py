@@ -37,5 +37,25 @@ tracker_params = {
 }
 
 response = requests.get(announce_url, params=tracker_params)
-import ipdb
-ipdb.set_trace()
+response_decoded = bdecode(response.content)
+peers = response_decoded['peers']
+
+peer_address = ''
+peer_list = []
+
+for i, peer in enumerate(peers):
+    import ipdb
+    ipdb.set_trace()
+    print i, peer
+    print ord(peer)
+    if i % 6 == 4:
+        port_large = ord(peer) * 256
+    elif i % 6 == 5:
+        port = port_large + ord(peer)
+        peer_address += ':' + str(port)
+        peer_list.append(peer_address)
+        peer_address = ''
+    elif i % 6 == 3:
+        peer_address += str(ord(peer))
+    else:
+        peer_address += str(ord(peer)) + '.'
