@@ -59,3 +59,5 @@ for i, peer in enumerate(peers):
         peer_address += str(ord(peer))
     else:
         peer_address += str(ord(peer)) + '.'
+
+print "Peer List: %r", peer_list 
