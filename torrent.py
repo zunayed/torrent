@@ -2,6 +2,7 @@ import requests
 import hashlib
 import random
 import string
+import socket
 
 from bencode import bencode, bdecode
 
@@ -43,11 +44,12 @@ peers = response_decoded['peers']
 peer_address = ''
 peer_list = []
 
+
 for i, peer in enumerate(peers):
-    import ipdb
-    ipdb.set_trace()
-    print i, peer
-    print ord(peer)
+#    import ipdb
+#    ipdb.set_trace()
+#    print i, peer
+#    print ord(peer)
     if i % 6 == 4:
         port_large = ord(peer) * 256
     elif i % 6 == 5:
@@ -60,4 +62,14 @@ for i, peer in enumerate(peers):
     else:
         peer_address += str(ord(peer)) + '.'
 
-print "Peer List: %r", peer_list 
+print "Peer List: %r", peer_list[0]
+peer_full_add = peer_list[0].split(':')
+peer_ip_address = peer_full_add[0]
+peer_port = int(peer_full_add[1])
+
+sock = socket.socket()
+sock.connect((peer_ip_address,peer_port))
+
+import ipdb
+ipdb.set_trace()
+
