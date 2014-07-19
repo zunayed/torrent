@@ -3,6 +3,7 @@ import hashlib
 import random
 import string
 import socket
+import struct
 
 from bencode import bencode, bdecode
 
@@ -44,6 +45,7 @@ peers = response_decoded['peers']
 peer_address = ''
 peer_list = []
 
+print "%r" % peers
 
 for i, peer in enumerate(peers):
 #    import ipdb
@@ -70,6 +72,21 @@ peer_port = int(peer_full_add[1])
 sock = socket.socket()
 sock.connect((peer_ip_address,peer_port))
 
+# handshake: <pstrlen><pstr><reserved><info_hash><peer_id>
+pstrlen = 19
+pstr = "BitTorrent protocol"
+reserved = "\x00"*8
+hs_info_hash = info_hash
+hs_peer_id = peer_id
+
+handshake = str(pstrlen) + pstr + reserved + hs_info_hash + hs_peer_id
+
+#test2 = struct.pack('bsqss',pstrlen,pstr,reserved,hs_info_hash,hs_peer_id)
+
+print handshake
+
 import ipdb
 ipdb.set_trace()
+
+
 
