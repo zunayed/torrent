@@ -73,17 +73,22 @@ sock = socket.socket()
 sock.connect((peer_ip_address,peer_port))
 
 # handshake: <pstrlen><pstr><reserved><info_hash><peer_id>
-pstrlen = 19
+pstrlen = chr(19)
 pstr = "BitTorrent protocol"
-reserved = "\x00"*8
+reserved = 8 * chr(0)
 hs_info_hash = info_hash
 hs_peer_id = peer_id
 
-handshake = str(pstrlen) + pstr + reserved + hs_info_hash + hs_peer_id
+response_size = 68
 
+handshake = pstrlen + pstr + reserved + hs_info_hash + hs_peer_id
 #test2 = struct.pack('bsqss',pstrlen,pstr,reserved,hs_info_hash,hs_peer_id)
 
-print handshake
+sock.send(handshake)
+peer_response = sock.recv(response_size)
+
+print peer_response
+
 
 import ipdb
 ipdb.set_trace()
