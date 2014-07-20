@@ -3,95 +3,116 @@ import hashlib
 import random
 import string
 import socket
-import struct
 
 from bencode import bencode, bdecode
 
-with open("ub.torrent") as f:
-    decoded_data = bdecode(f.read())
 
-announce_url = decoded_data['announce']
-info = decoded_data['info']
-info_hash = hashlib.sha1(bencode(info)).digest()
+class Torrent(object):
+    """
+    Given a filename decodeds & parses tracker info
 
-peer_id = ''.join(random.choice(string.ascii_lowercase + string.digits) for x in range(20))
+    - build torrent class
+    - open torrent file
+    - decode torrent file
+    - get response from tracker
+    - get peer list
+    """
 
-uploaded = 0
-downloaded = 0
+    def __init__(self, torrent_filename):
+        self.filename = torrent_filename
+        self.decoded_data = self.decode_file()
+        self.announce_url = self.decoded_data['announce']
+        self.info = self.decoded_data['info']
+        self.info_hash = hashlib.sha1(bencode(self.info)).digest()
+        self.peer_id = ''.join(random.choice(string.ascii_lowercase +
+                                             string.digits) for x in range(20))
+        self.overall_file_length = self.info['length']
+        self.download_left = self.overall_file_length
+        self.uploaded = 0
+        self.downloaded = 0
+        self.compact = 1
+        self.no_peer_id = 0
+        self.port = 8123
+        self.tracker_params = {
+            'info_hash': self.info_hash,
+            'peer_id': self.peer_id,
+            'port': self.port,
+            'uploaded': self.uploaded,
+            'downloaded': self.downloaded,
+            'left': self.download_left,
+            'compact': self.compact,
+            'no_peer_id': self.no_peer_id,
+        }
+        self.tracker_response = self.get_tracker_response()
+        self.peers_list = self.get_peer_list()
 
-overall_file_length = info['length']
-left = overall_file_length
+    def decode_file(self):
+        """
+        Returned bencode decoded torrent file
+        """
+        with open(self.filename) as f:
+            decoded_data = bdecode(f.read())
 
-compact = 1
-no_peer_id = 0
+        return decoded_data
 
-port = 8000
+    def get_tracker_response(self):
+        """
+        Get request is sent to the tracker along with parsed torrentfile data
+        """
+        response = requests.get(
+            self.announce_url,
+            params=self.tracker_params
+        )
+        response_decoded = bdecode(response.content)
 
-tracker_params = {
-    'info_hash': info_hash,
-    'peer_id': peer_id,
-    'port': port,
-    'uploaded': uploaded,
-    'downloaded': downloaded,
-    'left': left,
-    'compact': compact,
-    'no_peer_id': no_peer_id,
-}
+        return response_decoded
 
-response = requests.get(announce_url, params=tracker_params)
-response_decoded = bdecode(response.content)
-peers = response_decoded['peers']
-
-peer_address = ''
-peer_list = []
-
-print "%r" % peers
-
-for i, peer in enumerate(peers):
-#    import ipdb
-#    ipdb.set_trace()
-#    print i, peer
-#    print ord(peer)
-    if i % 6 == 4:
-        port_large = ord(peer) * 256
-    elif i % 6 == 5:
-        port = port_large + ord(peer)
-        peer_address += ':' + str(port)
-        peer_list.append(peer_address)
+    def get_peer_list(self):
+        """
+        Decodeds peers value may be a string consisting of multiples of 6 bytes
+        First 4 bytes are the IP address and last 2 bytes are the port number
+        """
+        peers = self.tracker_response['peers']
         peer_address = ''
-    elif i % 6 == 3:
-        peer_address += str(ord(peer))
-    else:
-        peer_address += str(ord(peer)) + '.'
+        peer_list = []
 
-print "Peer List: %r", peer_list[0]
-peer_full_add = peer_list[0].split(':')
-peer_ip_address = peer_full_add[0]
-peer_port = int(peer_full_add[1])
+        for i, peer in enumerate(peers):
+            if i % 6 == 4:
+                port_large = ord(peer) * 256
+            elif i % 6 == 5:
+                port = port_large + ord(peer)
+                peer_address += ':' + str(port)
+                peer_list.append(peer_address)
+                peer_address = ''
+            elif i % 6 == 3:
+                peer_address += str(ord(peer))
+            else:
+                peer_address += str(ord(peer)) + '.'
 
-sock = socket.socket()
-sock.connect((peer_ip_address,peer_port))
+        return peer_list
 
-# handshake: <pstrlen><pstr><reserved><info_hash><peer_id>
-pstrlen = chr(19)
-pstr = "BitTorrent protocol"
-reserved = 8 * chr(0)
-hs_info_hash = info_hash
-hs_peer_id = peer_id
+    def connect_to_peer(self, peer):
+        """
+        Given a peer id address initiate a handshake
+        """
+        sock = socket.socket()
+        ip, port = peer.split(':')
+        port = int(port)
+        sock.connect((ip, port))
 
-response_size = 68
+        pstrlen = chr(19)
+        pstr = "BitTorrent protocol"
+        reserved = 8 * chr(0)
+        response_size = 68
+        handshake = pstrlen + pstr + reserved + self.info_hash + self.peer_id
+        sock.send(handshake)
+        peer_response = sock.recv(response_size)
 
-handshake = pstrlen + pstr + reserved + hs_info_hash + hs_peer_id
-#test2 = struct.pack('bsqss',pstrlen,pstr,reserved,hs_info_hash,hs_peer_id)
+        return peer_response
 
-sock.send(handshake)
-peer_response = sock.recv(response_size)
-
-print peer_response
-
-
-import ipdb
-ipdb.set_trace()
-
-
-
+if __name__ == "__main__":
+    tor = Torrent('ub.torrent')
+    peer_response = tor.connect_to_peer(tor.peers_list[0])
+    print peer_response
+    import ipdb
+    ipdb.set_trace()
