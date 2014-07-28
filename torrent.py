@@ -110,9 +110,18 @@ class Torrent(object):
 
         return peer_response
 
-if __name__ == "__main__":
-    tor = Torrent('ub.torrent')
-    peer_response = tor.connect_to_peer(tor.peers_list[0])
-    print peer_response
-    import ipdb
-    ipdb.set_trace()
+    def get_handshake(self, peer):
+        """
+        Given a peer id address return a handshake
+        """
+        sock = socket.socket()
+        ip, port = peer.split(':')
+        port = int(port)
+        sock.connect((ip, port))
+
+        pstrlen = chr(19)
+        pstr = "BitTorrent protocol"
+        reserved = 8 * chr(0)
+        response_size = 68
+        handshake = pstrlen + pstr + reserved + self.info_hash + self.peer_id
+        return handshake
