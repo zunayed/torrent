@@ -8,6 +8,7 @@ from bencode import bencode, bdecode
 
 
 class Torrent(object):
+
     """
     Given a filename decodeds & parses tracker info
 
@@ -125,3 +126,15 @@ class Torrent(object):
         response_size = 68
         handshake = pstrlen + pstr + reserved + self.info_hash + self.peer_id
         return handshake
+
+    def check_handshake(self, data):
+        """
+        Check peer handshake matches your handshake
+        handshake: <pstrlen><pstr><reserved><info_hash><peer_id>
+        """
+
+        pstrlen = ord(data[0])
+        pstr = data[1:pstrlen + 1]
+        reserved = data[pstrlen + 1:pstrlen + 1 + 8]
+        info_hash = data[pstrlen + 1 + 8:pstrlen + 1 + 8 + 20]
+        peer_id = data[pstrlen + 1 + 8 + 20:pstrlen + 1 + 8 + 20 + 20]

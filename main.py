@@ -2,13 +2,13 @@ from torrent import Torrent
 from peerfactory import PeerFactory
 from twisted.internet import reactor
 
-tor = Torrent('ub2.torrent')
+tor = Torrent('ub.torrent')
 
 for peer in tor.peers_list[0:3]:
     handshake = tor.get_handshake(peer)
     ip_add, port = peer.split(":")
     print 'connection to ', ip_add, port
-    reactor.connectTCP(ip_add, int(port), PeerFactory(handshake))
+    reactor.connectTCP(ip_add, int(port), PeerFactory(handshake, tor))
 
 reactor.run()
 
