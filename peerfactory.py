@@ -1,5 +1,4 @@
 from twisted.internet import protocol
-from bencode import bencode, bdecode
 
 
 class PeerProtocol(protocol.Protocol):
@@ -8,17 +7,44 @@ class PeerProtocol(protocol.Protocol):
         self.factory = factory
         self.handshake = handshake
         self.torrent = torrent
+        self.interested_msg = 3 * chr(0) + chr(1) + chr(2)
+        self.peer_state = "HANDSHAKE"
 
     def connectionMade(self):
         self.factory.numConnections += 1
+
+        print "Send Handshake: %r" % self.handshake
         self.transport.write(self.handshake)
 
     def dataReceived(self, data):
-        print "Received data:", data
-        self.torrent.check_handshake(data)
-        import ipdb
-        ipdb.set_trace()
-        self.transport.loseConnection()
+        if self.peer_state == "HANDSHAKE":
+            print "Received Handshake Data: %r" % data
+
+            if self.checkHandshake(data):
+                self.peer_state = "CHOKE"
+                print "Send Interested Message: %r" % self.interested_msg
+                self.transport.write(self.interested_msg)
+                # import ipdb
+                # ipdb.set_trace()
+
+        if self.peer_state == "CHOKE":
+            print "Received Unchoke Message: %r" % data
+            import ipdb
+            ipdb.set_trace()
+
+        # self.transport.loseConnection()
+
+    def checkHandshake(self, data):
+        # handshake: <pstrlen><pstr><reserved><info_hash><peer_id>
+        pstrlen = ord(data[0])
+        pstr = data[1:pstrlen + 1]
+        reserved = data[pstrlen + 1:pstrlen + 1 + 8]
+        info_hash = data[pstrlen + 1 + 8:pstrlen + 1 + 8 + 20]
+        peer_id = data[pstrlen + 1 + 8 + 20:pstrlen + 1 + 8 + 20 + 20]
+
+        # Put code here to check if we want to connect to peer
+
+        return True
 
 
 class PeerFactory(protocol.ClientFactory):
