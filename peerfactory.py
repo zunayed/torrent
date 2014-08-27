@@ -17,6 +17,8 @@ class PeerProtocol(protocol.Protocol):
         self.transport.write(self.handshake)
 
     def dataReceived(self, data):
+        print "Length: %d" % len(data)
+
         if self.peer_state == "HANDSHAKE":
             print "Received Handshake Data: %r" % data
 
@@ -28,7 +30,23 @@ class PeerProtocol(protocol.Protocol):
                 # ipdb.set_trace()
 
         if self.peer_state == "CHOKE":
-            print "Received Unchoke Message: %r" % data
+
+            # Check to find type of message
+            if data[4] == chr(0):
+                print "Choke Message: %r" % data
+            elif data[4] == chr(1):
+                print "Unchoke Message: %r" % data
+            elif data[4] == chr(2):
+                print "Interested Message: %r" % data
+            elif data[4] == chr(3):
+                print "Non-Interested Message: %r" % data
+            elif data[4] == chr(4):
+                print "Have Message: %r" % data
+            elif data[4] == chr(5):
+                print "Bitfield Message: %r" % data
+            else:
+                print "Unknown Message: %r" % data
+            
             import ipdb
             ipdb.set_trace()
 
