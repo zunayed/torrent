@@ -9,6 +9,8 @@ class PeerProtocol(protocol.Protocol):
         self.torrent = torrent
         self.interested_msg = 3 * chr(0) + chr(1) + chr(2)
         self.peer_state = "HANDSHAKE"
+        self.total_pieces = 0
+        self.peer_pieces = []
 
     def connectionMade(self):
         self.factory.numConnections += 1
@@ -17,41 +19,54 @@ class PeerProtocol(protocol.Protocol):
         self.transport.write(self.handshake)
 
     def dataReceived(self, data):
-        print "Length: %d" % len(data)
+       # Check to find type of message
 
-        if self.peer_state == "HANDSHAKE":
-            print "Received Handshake Data: %r" % data
+        if data[4] == chr(0):
+            print "Choke Message: %r" % data
 
+        elif data[4] == chr(1):
+            print "Unchoke Message: %r" % data
+            self.peer_state = "UNCHOKE"
+
+            # send request message here
+
+            import ipdb
+            ipdb.set_trace()
+
+        elif data[4] == chr(2):
+            print "Interested Message: %r" % data
+
+        elif data[4] == chr(3):
+            print "Non-Interested Message: %r" % data
+
+        elif data[4] == chr(4):
+            print "Have Message: %r" % data
+
+        elif data[4] == chr(5):
+            print "Bitfield Message: %r" % data
+            
+            self.total_pieces = ord(data[3])-1
+            print "Peer total pieces: %r" % self.total_pieces
+
+            # Converts each byte to a string of bits (temp_binary_piece)
+            for i in range(5,5+self.total_pieces):
+                temp_binary_piece = bin(ord(data[i]))[2:].rjust(8,'0')
+
+                # Stores each bit so we know which piece peer has
+                for j in range(0,8):
+                    self.peer_pieces.append(temp_binary_piece[j])
+
+            # Send Unchoke Message
+            print "Send unchoke msg after bitfield msg"
+            self.transport.write(self.interested_msg)
+
+        else:
+            print "Handshake Message: %r" % data
             if self.checkHandshake(data):
                 self.peer_state = "CHOKE"
                 print "Send Interested Message: %r" % self.interested_msg
                 self.transport.write(self.interested_msg)
-                # import ipdb
-                # ipdb.set_trace()
-
-        if self.peer_state == "CHOKE":
-
-            # Check to find type of message
-            if data[4] == chr(0):
-                print "Choke Message: %r" % data
-            elif data[4] == chr(1):
-                print "Unchoke Message: %r" % data
-            elif data[4] == chr(2):
-                print "Interested Message: %r" % data
-            elif data[4] == chr(3):
-                print "Non-Interested Message: %r" % data
-            elif data[4] == chr(4):
-                print "Have Message: %r" % data
-            elif data[4] == chr(5):
-                print "Bitfield Message: %r" % data
-            else:
-                print "Unknown Message: %r" % data
-            
-            import ipdb
-            ipdb.set_trace()
-
-        # self.transport.loseConnection()
-
+        
     def checkHandshake(self, data):
         # handshake: <pstrlen><pstr><reserved><info_hash><peer_id>
         pstrlen = ord(data[0])
