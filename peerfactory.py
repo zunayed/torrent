@@ -16,8 +16,6 @@ class Peer(protocol.Protocol):
         self.total_pieces = 0
         self.peer_pieces = []
 
-        self.file = open("newfile.txt", "w")
-
     def connectionMade(self):
         self.factory.numConnections += 1
 
@@ -27,7 +25,6 @@ class Peer(protocol.Protocol):
     def dataReceived(self, data):
         # Take data and push it to message list
         print "Data Received: %r" % data
-        self.file.write("Data: "+data+"\n\n")
         self.populateMessageList(data)
         
         while(self.message_list and self.message_list[0].checkLength()):  
