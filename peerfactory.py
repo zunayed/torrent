@@ -16,6 +16,8 @@ class Peer(protocol.Protocol):
         self.total_pieces = 0
         self.peer_pieces = []
 
+        self.file = open("newfile.txt", "w")
+
     def connectionMade(self):
         self.factory.numConnections += 1
 
@@ -25,6 +27,7 @@ class Peer(protocol.Protocol):
     def dataReceived(self, data):
         # Take data and push it to message list
         print "Data Received: %r" % data
+        self.file.write("Data: "+data+"\n\n")
         self.populateMessageList(data)
         
         while(self.message_list and self.message_list[0].checkLength()):  
@@ -33,12 +36,12 @@ class Peer(protocol.Protocol):
             print "Full Message: %r" % temp.msg
 
             if temp.msg_type == "BITFIELD":
-                self.total_pieces = ord(data[3])-1
+                self.total_pieces = ord(temp.msg[3])-1
                 print "Peer total pieces: %r" % self.total_pieces
 
                 # Converts each byte to a string of bits (temp_binary_piece)
                 for i in range(5,5+self.total_pieces):
-                    temp_binary_piece = bin(ord(data[i]))[2:].rjust(8,'0')
+                    temp_binary_piece = bin(ord(temp.msg[i]))[2:].rjust(8,'0')
 
                     # Stores each bit so we know which piece peer has
                     for j in range(0,8):
@@ -49,7 +52,9 @@ class Peer(protocol.Protocol):
                 self.transport.write(self.interested_msg)
 
             elif temp.msg_type == "HAVE":
-                pass
+                import ipdb
+                ipdb.set_trace()
+                # pass
 
             elif temp.msg_type == "KEE_ALIVE":
                 pass
@@ -90,20 +95,24 @@ class Peer(protocol.Protocol):
                 # No messages, add new message
                 self.addNewMessage(data)
 
-    def addIncompleteMessage(self,data):
-        msg_full_len = self.message_list[-1].length
-        msg_1_len = len(self.message_list[-1].msg)
-        msg_2_len = msg_full_len - msg_1_len
-
+    def addHandshake(self,data):
         total_size = len(data)
+        hndshk_size = ord(data[0])+49
 
-        if(total_size == msg_2_len):
-            self.message_list[-1].msg += data
-        elif(total_size > msg_2_len):
-            self.message_list[-1].msg += data[0:msg_2_len]
-            self.populateMessageList(data[msg_2_len:total_size])
+        if(len(data) == hndshk_size):
+            temp = Message(hndshk_size,data,"HANDSHAKE")
+            self.message_list.append(temp)
+            self.peer_state = "MESSAGE"
+
+        elif(len(data) > hndshk_size):
+            temp = Message(hndshk_size,data[0:hndshk_size],"HANDSHAKE")
+            self.message_list.append(temp)
+            self.peer_state = "MESSAGE"
+            self.populateMessageList(data[hndshk_size:total_size])
+
         else:
-            self.message_list[-1].msg += data
+            temp = Message(hndshk_size,data[0:total_size],"HANDSHAKE")
+            self.messsage_list.append(temp)
 
     def addNewMessage(self, data):
         if(data[3] == chr(0)):
@@ -147,32 +156,26 @@ class Peer(protocol.Protocol):
             temp = Message(msg_size, data[0:total_size], msg_type)
             self.message_list.append(temp)
 
-    def addHandshake(self,data):
+    def addIncompleteMessage(self,data):
+        msg_full_len = self.message_list[-1].length
+        msg_1_len = len(self.message_list[-1].msg)
+        msg_2_len = msg_full_len - msg_1_len
+
         total_size = len(data)
-        hndshk_size = ord(data[0])+49
 
-        if(len(data) == hndshk_size):
-            temp = Message(hndshk_size,data,"HANDSHAKE")
-            self.message_list.append(temp)
-            self.peer_state = "MESSAGE"
-
-        elif(len(data) > hndshk_size):
-            temp = Message(hndshk_size,data[0:hndshk_size],"HANDSHAKE")
-            self.message_list.append(temp)
-            self.peer_state = "MESSAGE"
-            self.populateMessageList(data[hndshk_size:total_size])
-
+        if(total_size == msg_2_len):
+            self.message_list[-1].msg += data
+        elif(total_size > msg_2_len):
+            self.message_list[-1].msg += data[0:msg_2_len]
+            self.populateMessageList(data[msg_2_len:total_size])
         else:
-            temp = Message(hndshk_size,data[0:total_size],"HANDSHAKE")
-            self.messsage_list.append(temp)
+            self.message_list[-1].msg += data
         
-
     def returnNextMessage(self):
         if(self.message_list[0].checkLength()):
             return self.message_list.pop(0)
         else:
             return 0
-
 
 class PeerFactory(protocol.ClientFactory):
     numConnections = 0
