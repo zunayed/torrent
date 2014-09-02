@@ -24,17 +24,16 @@ class Peer(protocol.Protocol):
 
     def dataReceived(self, data):
         # Take data and push it to message list
-        print "Data Received: %r" % data
+        # print "Data Received: %r" % data
         self.populateMessageList(data)
         
         while(self.message_list and self.message_list[0].checkLength()):  
             temp = self.returnNextMessage()
             print "Type: %r" % temp.msg_type
-            print "Full Message: %r" % temp.msg
+            print "Full Message: %r \n" % temp.msg
 
             if temp.msg_type == "BITFIELD":
                 self.total_pieces = ord(temp.msg[3])-1
-                print "Peer total pieces: %r" % self.total_pieces
 
                 # Converts each byte to a string of bits (temp_binary_piece)
                 for i in range(5,5+self.total_pieces):
@@ -45,21 +44,19 @@ class Peer(protocol.Protocol):
                         self.peer_pieces.append(temp_binary_piece[j])
 
                 # Send Unchoke Message
-                print "Send unchoke msg after bitfield msg"
                 self.transport.write(self.interested_msg)
 
             elif temp.msg_type == "HAVE":
-                import ipdb
-                ipdb.set_trace()
-                # pass
+                pass
 
-            elif temp.msg_type == "KEE_ALIVE":
+            elif temp.msg_type == "KEEP_ALIVE":
                 pass
 
             elif temp.msg_type == "CHOKE":
                 pass
 
             elif temp.msg_type == "UNCHOKE":
+                # Send a request message here based off pieces peer has
                 pass
 
             elif temp.msg_type == "INTERESTED":
@@ -68,51 +65,29 @@ class Peer(protocol.Protocol):
             elif temp.msg_type == "NOT_INTERESTED":
                 pass
 
-            import ipdb
-            ipdb.set_trace()
-
 
     def populateMessageList(self,data):
         # Function to push either partial or full msg to list
+        if(self.message_list):
 
-        if(self.peer_state == "HANDSHAKE"):
-            self.addHandshake(data)
-
-        elif(self.peer_state == "MESSAGE"):
-
-            if(self.message_list):
-
-                if(self.message_list[-1].checkLength()):
-                    # Last message is complete, add new message
-                    self.addNewMessage(data)
-                else:
-                    # Last message is not complete, insert rest of message
-                    self.addIncompleteMessage(data)
-            else:
-                # No messages, add new message
+            if(self.message_list[-1].checkLength()):
+                # Last message is complete, add new message
                 self.addNewMessage(data)
-
-    def addHandshake(self,data):
-        total_size = len(data)
-        hndshk_size = ord(data[0])+49
-
-        if(len(data) == hndshk_size):
-            temp = Message(hndshk_size,data,"HANDSHAKE")
-            self.message_list.append(temp)
-            self.peer_state = "MESSAGE"
-
-        elif(len(data) > hndshk_size):
-            temp = Message(hndshk_size,data[0:hndshk_size],"HANDSHAKE")
-            self.message_list.append(temp)
-            self.peer_state = "MESSAGE"
-            self.populateMessageList(data[hndshk_size:total_size])
-
+            else:
+                # Last message is not complete, insert rest of message
+                self.addIncompleteMessage(data)
         else:
-            temp = Message(hndshk_size,data[0:total_size],"HANDSHAKE")
-            self.messsage_list.append(temp)
+            # No messages, add new message
+            self.addNewMessage(data)
 
     def addNewMessage(self, data):
-        if(data[3] == chr(0)):
+        # print "Add Message Data: %r" % data
+
+        if(data[0] != chr(0)):
+            msg_type = "HANDSHAKE"
+            msg_size = ord(data[0])+49
+
+        elif(data[3] == chr(0)):
             msg_type = "KEEP_ALIVE"
             msg_size = 4
 
@@ -134,7 +109,7 @@ class Peer(protocol.Protocol):
 
         elif(data[4] == chr(4)):
             msg_type = "HAVE"
-            msg_size = 5
+            msg_size = 4 + ord(data[3])
 
         elif(data[4] == chr(5)):
             msg_type = "BITFIELD"
@@ -150,7 +125,7 @@ class Peer(protocol.Protocol):
             self.message_list.append(temp)
             self.populateMessageList(data[msg_size:total_size])
         else:
-            temp = Message(msg_size, data[0:total_size], msg_type)
+            temp = Message(msg_size, data, msg_type)
             self.message_list.append(temp)
 
     def addIncompleteMessage(self,data):
