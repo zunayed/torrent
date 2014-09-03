@@ -92,49 +92,12 @@ class Torrent(object):
 
         return peer_list
 
-    def connect_to_peer(self, peer):
-        """
-        Given a peer id address initiate a handshake
-        """
-        sock = socket.socket()
-        ip, port = peer.split(':')
-        port = int(port)
-        sock.connect((ip, port))
-
-        pstrlen = chr(19)
-        pstr = "BitTorrent protocol"
-        reserved = 8 * chr(0)
-        response_size = 68
-        handshake = pstrlen + pstr + reserved + self.info_hash + self.peer_id
-        sock.send(handshake)
-        peer_response = sock.recv(response_size)
-
-        return peer_response
-
     def get_handshake(self, peer):
         """
         Given a peer id address return a handshake
         """
-        sock = socket.socket()
-        ip, port = peer.split(':')
-        port = int(port)
-        sock.connect((ip, port))
-
         pstrlen = chr(19)
         pstr = "BitTorrent protocol"
         reserved = 8 * chr(0)
-        response_size = 68
         handshake = pstrlen + pstr + reserved + self.info_hash + self.peer_id
         return handshake
-
-    def check_handshake(self, data):
-        """
-        Check peer handshake matches your handshake
-        handshake: <pstrlen><pstr><reserved><info_hash><peer_id>
-        """
-
-        pstrlen = ord(data[0])
-        pstr = data[1:pstrlen + 1]
-        reserved = data[pstrlen + 1:pstrlen + 1 + 8]
-        info_hash = data[pstrlen + 1 + 8:pstrlen + 1 + 8 + 20]
-        peer_id = data[pstrlen + 1 + 8 + 20:pstrlen + 1 + 8 + 20 + 20]
