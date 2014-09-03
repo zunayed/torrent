@@ -26,7 +26,7 @@ class Peer(protocol.Protocol):
 
     def dataReceived(self, data):
         # Take data and push it to message list
-        # print "Data Received: %r" % data
+        print "Data Received: %r" % data
         self.populateMessageList(data)
 
         while(self.message_list and self.message_list[0].checkLength()):
@@ -62,12 +62,15 @@ class Peer(protocol.Protocol):
 
             elif temp.msg_type == "UNCHOKE":
                 # Send a request message here based off pieces peer has
-                print "UNCHOKE"
-
-                import ipdb
-                ipdb.set_trace()
-
-
+                request_length = chr(0) * 3 + chr(13)
+                message_id = chr(6)
+                # note - the payload data should each be in network order
+                wanted_piece_index = chr(0) * 4
+                offset = chr(0) * 4
+                piece_length = struct.pack('!i', 2**14)
+                request_message = request_length + message_id + wanted_piece_index + offset + piece_length
+                print "Request Message: %r" % request_message 
+                self.transport.write(request_message)
             elif temp.msg_type == "INTERESTED":
                 pass
 
@@ -122,6 +125,14 @@ class Peer(protocol.Protocol):
         elif(data[4] == chr(5)):
             msg_type = "BITFIELD"
             msg_size = (ord(data[3]) - 1) + 5
+        elif(data[4] == chr(7)):
+            msg_type = "PIECE"
+            msg_size = (ord(data[3]) - 1) + 9
+            import ipdb
+            ipdb.set_trace()
+        else:
+            print "UNKNOWN MESSAGE TYPE"
+
 
         total_size = len(data)
 
