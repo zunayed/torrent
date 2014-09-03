@@ -71,11 +71,16 @@ class Peer(protocol.Protocol):
                 request_message = request_length + message_id + wanted_piece_index + offset + piece_length
                 print "Request Message: %r" % request_message 
                 self.transport.write(request_message)
+
             elif temp.msg_type == "INTERESTED":
                 pass
 
             elif temp.msg_type == "NOT_INTERESTED":
                 pass
+
+            elif temp.msg_type == "PIECE":
+                import ipdb
+                ipdb.set_trace()
 
     def populateMessageList(self, data):
         # Function to push either partial or full msg to list
@@ -125,14 +130,15 @@ class Peer(protocol.Protocol):
         elif(data[4] == chr(5)):
             msg_type = "BITFIELD"
             msg_size = (ord(data[3]) - 1) + 5
+
         elif(data[4] == chr(7)):
             msg_type = "PIECE"
-            msg_size = (ord(data[3]) - 1) + 9
-            import ipdb
-            ipdb.set_trace()
+
+            block_len = struct.unpack('!i',data[0:4])[0] - 9
+            msg_size = block_len + 13
+
         else:
             print "UNKNOWN MESSAGE TYPE"
-
 
         total_size = len(data)
 
