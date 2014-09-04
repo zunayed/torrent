@@ -98,6 +98,8 @@ class Peer(protocol.Protocol):
 
     def addNewMessage(self, data):
         # print "Add Message Data: %r" % data
+        prefix_len = 4
+        prefix_value = struct.unpack('!i',data[0:4])[0]
 
         if(data[0] != chr(0)):
             msg_type = "HANDSHAKE"
@@ -105,37 +107,35 @@ class Peer(protocol.Protocol):
 
         elif(data[3] == chr(0)):
             msg_type = "KEEP_ALIVE"
-            msg_size = 4
+            msg_size = prefix_len + prefix_value
 
         elif(data[4] == chr(0)):
             msg_type = "CHOKE"
-            msg_size = 5
+            msg_size = prefix_len + prefix_value
 
         elif(data[4] == chr(1)):
             msg_type = "UNCHOKE"
-            msg_size = 5
+            msg_size = prefix_len + prefix_value
 
         elif(data[4] == chr(2)):
             msg_type = "INTERESTED"
-            msg_size = 5
+            msg_size = prefix_len + prefix_value
 
         elif(data[4] == chr(3)):
             msg_type = "NOT_INTERESTED"
-            msg_size = 5
+            msg_size = prefix_len + prefix_value
 
         elif(data[4] == chr(4)):
             msg_type = "HAVE"
-            msg_size = 4 + ord(data[3])
+            msg_size = prefix_len + prefix_value
 
         elif(data[4] == chr(5)):
             msg_type = "BITFIELD"
-            msg_size = (ord(data[3]) - 1) + 5
+            msg_size = prefix_len + prefix_value
 
         elif(data[4] == chr(7)):
             msg_type = "PIECE"
-
-            block_len = struct.unpack('!i',data[0:4])[0] - 9
-            msg_size = block_len + 13
+            msg_size = prefix_len + prefix_value
 
         else:
             print "UNKNOWN MESSAGE TYPE"
