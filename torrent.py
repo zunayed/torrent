@@ -2,7 +2,6 @@ import requests
 import hashlib
 import random
 import string
-import socket
 
 from bencode import bencode, bdecode
 
@@ -25,8 +24,6 @@ class Torrent(object):
         self.announce_url = self.decoded_data['announce']
         self.info = self.decoded_data['info']
         self.info_hash = hashlib.sha1(bencode(self.info)).digest()
-        self.peer_id = ''.join(random.choice(string.ascii_lowercase +
-                                             string.digits) for x in range(20))
         self.overall_file_length = self.info['length']
         self.download_left = self.overall_file_length
         self.uploaded = 0
@@ -34,6 +31,7 @@ class Torrent(object):
         self.compact = 1
         self.no_peer_id = 0
         self.port = 8123
+        self.peer_id = self.generate_peer_id()
         self.tracker_params = {
             'info_hash': self.info_hash,
             'peer_id': self.peer_id,
@@ -55,6 +53,12 @@ class Torrent(object):
             decoded_data = bdecode(f.read())
 
         return decoded_data
+
+    def generate_peer_id(self):
+        peer_id = ''.join(random.choice(string.ascii_lowercase +
+                                        string.digits) for x in range(20))
+
+        return peer_id
 
     def get_tracker_response(self):
         """
