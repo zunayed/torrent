@@ -5,7 +5,6 @@ import string
 
 from bencode import bencode, bdecode
 
-
 class Torrent(object):
 
     """
@@ -72,29 +71,21 @@ class Torrent(object):
 
         return response_decoded
 
+    def get_peer_address(self, peer):
+        f = lambda x: str(ord(x))
+        ip_address = '.'.join(map(f, peer[0:4]))
+        port = str((ord(peer[4])*256)+ord(peer[5]))
+        return ip_address + ':' + port
+
     def get_peer_list(self):
         """
         Decodeds peers value may be a string consisting of multiples of 6 bytes
         First 4 bytes are the IP address and last 2 bytes are the port number
         """
-        peers = self.tracker_response['peers']
-        peer_address = ''
-        peer_list = []
+        peer_string = self.tracker_response['peers']
+        peers = [peer_string[i:i+6] for i in range(0, len(peer_string), 6)]
 
-        for i, peer in enumerate(peers):
-            if i % 6 == 4:
-                port_large = ord(peer) * 256
-            elif i % 6 == 5:
-                port = port_large + ord(peer)
-                peer_address += ':' + str(port)
-                peer_list.append(peer_address)
-                peer_address = ''
-            elif i % 6 == 3:
-                peer_address += str(ord(peer))
-            else:
-                peer_address += str(ord(peer)) + '.'
-
-        return peer_list
+        return map(self.get_peer_address, peers)
 
     def get_handshake(self, peer):
         """
